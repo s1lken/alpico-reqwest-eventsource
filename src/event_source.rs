@@ -9,12 +9,32 @@ use futures_core::task::{Context, Poll};
 use futures_timer::Delay;
 use pin_project_lite::pin_project;
 use reqwest::header::{HeaderName, HeaderValue};
-use reqwest::{Error as ReqwestError, IntoUrl, RequestBuilder, Response, StatusCode};
+use reqwest::{IntoUrl, RequestBuilder, Response, StatusCode};
 use std::time::Duration;
+use task_local_extensions::Extensions;
+use reqwest_middleware::ClientWithMiddleware;
 
-type ResponseFuture = BoxFuture<'static, Result<Response, ReqwestError>>;
-type EventStream = BoxStream<'static, Result<MessageEvent, EventStreamError<ReqwestError>>>;
+type ResponseFuture = BoxFuture<'static, Result<Response, reqwest_middleware::Error>>;
+type EventStream = BoxStream<'static, Result<MessageEvent, EventStreamError<reqwest_middleware::Error>>>;
 type BoxedRetry = Box<dyn RetryPolicy + Send + Unpin + 'static>;
+
+pub trait IntoMiddlewareBuilder {
+    fn into_middleware(self) -> reqwest_middleware::RequestBuilder;
+}
+
+impl IntoMiddlewareBuilder for reqwest_middleware::RequestBuilder {
+    fn into_middleware(self) -> reqwest_middleware::RequestBuilder {
+        self
+    }
+}
+
+impl IntoMiddlewareBuilder for reqwest::RequestBuilder {
+    fn into_middleware(self) -> reqwest_middleware::RequestBuilder {
+        let (client, res) = self.build_split();
+        let res_clone = res.unwrap().try_clone().unwrap();
+        reqwest_middleware::ClientBuilder::new(client).build().request(res_clone.method().clone(), res_clone.url().as_str())
+    }
+}
 
 /// The ready state of an [`EventSource`]
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd)]
@@ -33,7 +53,7 @@ pin_project! {
 /// [`RequestBuilder`] and retries requests when they fail.
 #[project = EventSourceProjection]
 pub struct EventSource {
-    builder: RequestBuilder,
+    builder: reqwest_middleware::RequestBuilder,
     #[pin]
     next_response: Option<ResponseFuture>,
     #[pin]
@@ -49,8 +69,8 @@ pub struct EventSource {
 
 impl EventSource {
     /// Wrap a [`RequestBuilder`]
-    pub fn new(builder: RequestBuilder) -> Result<Self, CannotCloneRequestError> {
-        let builder = builder.header(
+    pub fn new<T: IntoMiddlewareBuilder>(builder: T) -> Result<Self, CannotCloneRequestError> {
+        let builder = builder.into_middleware().header(
             reqwest::header::ACCEPT,
             HeaderValue::from_static("text/event-stream"),
         );
@@ -146,7 +166,7 @@ impl<'a> EventSourceProjection<'a> {
         self.last_retry.take();
         let mut stream = res.bytes_stream().eventsource();
         stream.set_last_event_id(self.last_event_id.clone());
-        self.cur_stream.replace(Box::pin(stream));
+        //self.cur_stream.replace(Box::pin(stream));
     }
 
     fn handle_event(&mut self, event: &MessageEvent) {

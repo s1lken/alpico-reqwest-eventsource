@@ -2,7 +2,7 @@ use core::fmt;
 use eventsource_stream::EventStreamError;
 use nom::error::Error as NomError;
 use reqwest::header::HeaderValue;
-use reqwest::Error as ReqwestError;
+use reqwest_middleware::Error as ReqwestError;
 use reqwest::StatusCode;
 use std::string::FromUtf8Error;
 

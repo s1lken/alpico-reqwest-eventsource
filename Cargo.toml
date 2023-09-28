@@ -22,6 +22,7 @@ nom = "7.1.0"
 mime = "0.3.16"
 futures-timer = "3.0.2"
 thiserror = "1.0.30"
+reqwest-middleware = "0.2.3"
 
 [dev-dependencies]
 futures = "0.3.5"

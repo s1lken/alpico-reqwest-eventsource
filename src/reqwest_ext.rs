@@ -1,6 +1,6 @@
 use crate::error::CannotCloneRequestError;
 use crate::event_source::EventSource;
-use reqwest::RequestBuilder;
+use reqwest_middleware::RequestBuilder;
 
 /// Provides an easy interface to build an [`EventSource`] from a [`RequestBuilder`]
 pub trait RequestBuilderExt {
