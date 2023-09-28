@@ -11,7 +11,6 @@ use pin_project_lite::pin_project;
 use reqwest::header::{HeaderName, HeaderValue};
 use reqwest::{IntoUrl, RequestBuilder, Response, StatusCode};
 use std::time::Duration;
-use task_local_extensions::Extensions;
 use reqwest_middleware::ClientWithMiddleware;
 
 type ResponseFuture = BoxFuture<'static, Result<Response, reqwest_middleware::Error>>;
